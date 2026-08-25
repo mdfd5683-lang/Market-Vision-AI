@@ -28,7 +28,21 @@ jobs:
         run: |
           PROJECT_DIR=$(dirname "$(find src -maxdepth 6 \( -name settings.gradle.kts -o -name settings.gradle \) | head -n 1)")
           echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+      - name: Patch project for CI (fix signing + google services)
+        run: |
+          for f in "$PROJECT_DIR/app/build.gradle.kts" "$PROJECT_DIR/app/build.gradle"; do
+            if [ -f "$f" ]; then
+              echo "Patching $f"
 
+              # Remove Google Services plugin (google-services.json missing issue)
+              sed -i '/com.google.gms.google-services/d' "$f"
+              sed -i '/google-services/d' "$f"
+
+              # Fix debug signing (use default debug keystore instead of missing src/debug.keystore)
+              sed -i 's/getByName("debugConfig")/getByName("debug")/g' "$f"
+              sed -i 's/signingConfigs\["debugConfig"\]/signingConfigs["debug"]/g' "$f"
+            fi
+          done
       - name: Create local.properties
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > "$PROJECT_DIR/local.properties"
 
